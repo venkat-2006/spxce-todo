@@ -1,15 +1,19 @@
+require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const app = express();
-const PORT = 4000;
-const JWT_SECRET = 'dev-secret-change-me';
+const PORT = process.env.PORT || 3000; 
+const JWT_SECRET =  process.env.JWT_SECRET;
 
 // ... existing code ...
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ 
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Add this line
