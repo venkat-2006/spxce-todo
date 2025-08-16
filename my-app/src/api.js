@@ -32,5 +32,6 @@ export const api = {
   getTodos() { return request('/todos'); },
   addTodo(text) { return request('/todos', { method: 'POST', body: JSON.stringify({ text }) }); },
   toggleTodo(id, completed) { return request(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ completed }) }); },
+  updateTodo(id, text) { return request(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ text }) }); },
   deleteTodo(id) { return request(`/todos/${id}`, { method: 'DELETE' }); },
 };

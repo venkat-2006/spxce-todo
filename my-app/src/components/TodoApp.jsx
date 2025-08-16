@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Check, X, Rocket, Star } from 'lucide-react';
+import { Plus, Check, X, Rocket, Star, Edit, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/api';
 
 interface Todo {
   id: string;
@@ -18,6 +19,8 @@ interface Todo {
 export const TodoApp = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -54,6 +57,39 @@ export const TodoApp = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const startEditing = (todo: Todo) => {
+    setEditingId(todo.id);
+    setEditingText(todo.text);
+  };
+
+  const saveEdit = async (id: string) => {
+    if (editingText.trim() && editingText.trim() !== todos.find(t => t.id === id)?.text) {
+      try {
+        await api.updateTodo(id, editingText.trim());
+        setTodos(todos.map(todo => 
+          todo.id === id ? { ...todo, text: editingText.trim() } : todo
+        ));
+        toast({
+          title: "Mission Updated!",
+          description: `Updated: "${editingText.trim()}"`,
+        });
+      } catch (error) {
+        toast({
+          title: "Update Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+    setEditingId(null);
+    setEditingText('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText('');
   };
 
   const completedCount = todos.filter(todo => todo.completed).length;
@@ -141,25 +177,69 @@ export const TodoApp = () => {
                 </Button>
                 
                 <div className="flex-1">
-                  <p
-                    className={`transition-all ${
-                      todo.completed
-                        ? 'line-through text-muted-foreground'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    {todo.text}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Mission created: {todo.createdAt.toLocaleDateString()}
-                  </p>
+                  {editingId === todo.id ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="bg-input border-border text-foreground"
+                        onKeyPress={(e) => e.key === 'Enter' && saveEdit(todo.id)}
+                        onKeyDown={(e) => e.key === 'Escape' && cancelEdit()}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => saveEdit(todo.id)}
+                          className="h-6 px-2 text-xs text-primary hover:text-primary"
+                        >
+                          <Save className="w-3 h-3 mr-1" />
+                          Save
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={cancelEdit}
+                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p
+                        className={`transition-all ${
+                          todo.completed
+                            ? 'line-through text-muted-foreground'
+                            : 'text-foreground'
+                        }`}
+                      >
+                        {todo.text}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Mission created: {todo.createdAt.toLocaleDateString()}
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={() => startEditing(todo)}
+                  className="w-8 h-8 text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center"
+                  disabled={editingId !== null}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => deleteTodo(todo.id)}
-                  className="w-8 h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="w-8 h-8 text-destructive hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"
+                  disabled={editingId !== null}
                 >
                   <X className="w-4 h-4" />
                 </Button>

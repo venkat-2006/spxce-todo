@@ -27,21 +27,16 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Changed to false - no persistent session to check
 
-  useEffect(() => {
-    // Check for existing session on mount
-    const savedUser = localStorage.getItem('cosmic_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
-  }, []);
+  // Removed localStorage check since it doesn't work in Claude.ai
+  // User starts as null and must login each session
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // TODO: Replace with your actual API call
+      // Simulate API call with mock data for testing
+      // Replace this with your actual API call
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
@@ -49,23 +44,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         body: JSON.stringify({ email, password }),
       });
-
+      
       if (!response.ok) {
         throw new Error('Login failed');
       }
-
+      
       const userData = await response.json();
-      setUser(userData);
-      localStorage.setItem('cosmic_user', JSON.stringify(userData));
-    } catch (error) {
-      // For demo purposes, simulate a successful login
-      const mockUser = {
-        id: '1',
-        email,
-        name: email.split('@')[0],
+      const finalUser: User = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name || userData.email.split('@')[0],
       };
-      setUser(mockUser);
-      localStorage.setItem('cosmic_user', JSON.stringify(mockUser));
+      
+      setUser(finalUser);
+      // Removed localStorage.setItem since it doesn't work in Claude.ai
+    } catch (error) {
+      // For demo purposes, you can add a fallback mock login
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
+      throw error; // Re-throw to let the calling component handle it
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +71,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
-      // TODO: Replace with your actual API call
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -82,23 +78,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         body: JSON.stringify({ email, password, name }),
       });
-
+      
       if (!response.ok) {
         throw new Error('Signup failed');
       }
-
+      
       const userData = await response.json();
-      setUser(userData);
-      localStorage.setItem('cosmic_user', JSON.stringify(userData));
-    } catch (error) {
-      // For demo purposes, simulate a successful signup
-      const mockUser = {
-        id: '1',
-        email,
-        name,
+      const finalUser: User = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name || name || userData.email.split('@')[0],
       };
-      setUser(mockUser);
-      localStorage.setItem('cosmic_user', JSON.stringify(mockUser));
+      
+      setUser(finalUser);
+      // Removed localStorage.setItem since it doesn't work in Claude.ai
+    } catch (error) {
+      console.error('Signup error:', error);
+      alert('Signup failed. Please try again.');
+      throw error; // Re-throw to let the calling component handle it
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('cosmic_user');
+    // Removed localStorage.removeItem since it doesn't work in Claude.ai
   };
 
   const value = {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './App.css';
 
 function App() {
@@ -10,23 +10,15 @@ function App() {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState(null);
 
   const API_BASE = 'http://localhost:4000';
 
-  // Check token on mount
-  useEffect(() => {
-    const token = localStorage.getItem('todospace_token');
-    if (token) {
-      setIsAuthenticated(true);
-      fetchTodos(token);
-    }
-  }, []);
-
-  const fetchTodos = async (token) => {
+  const fetchTodos = async (authToken) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/todos`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (!res.ok) throw new Error('Failed to fetch todos');
       const data = await res.json();
@@ -49,7 +41,7 @@ function App() {
       });
       if (!res.ok) throw new Error('Authentication failed');
       const data = await res.json();
-      localStorage.setItem('todospace_token', data.token);
+      setToken(data.token);
       setUser(data.user);
       setIsAuthenticated(true);
       setEmail('');
@@ -62,7 +54,6 @@ function App() {
 
   const addTodo = async () => {
     if (!inputValue.trim()) return;
-    const token = localStorage.getItem('todospace_token');
     try {
       const res = await fetch(`${API_BASE}/todos`, {
         method: 'POST',
@@ -82,7 +73,6 @@ function App() {
   };
 
   const toggleTodo = async (id, completed) => {
-    const token = localStorage.getItem('todospace_token');
     try {
       const res = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'PATCH',
@@ -104,7 +94,6 @@ function App() {
   };
 
   const deleteTodo = async (id) => {
-    const token = localStorage.getItem('todospace_token');
     try {
       const res = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'DELETE',
@@ -118,7 +107,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('todospace_token');
+    setToken(null);
     setIsAuthenticated(false);
     setUser(null);
     setTodos([]);
@@ -179,7 +168,7 @@ function App() {
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-white mb-4">🚀 TodoSpace</h1>
           <p className="text-gray-300 text-lg mb-2">
-            Welcome back, Commander {user?.email}!
+            Welcome back, Commander {user?.name || user?.email}!
           </p>
           <div className="flex items-center justify-center gap-4">
             <span className="text-sm text-gray-400">
