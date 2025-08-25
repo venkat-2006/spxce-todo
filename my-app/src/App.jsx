@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
+import { Check, X, Pencil } from "lucide-react"; // ✅ icons
 
 function App() {
   const [todos, setTodos] = useState([]);
@@ -11,25 +12,24 @@ function App() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState(null);
+
   // New states for edit functionality
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
 
-  // Fixed: Change from port 4000 to 3000 to match your backend
   const API_BASE = 'http://localhost:3000';
 
   const fetchTodos = async (authToken) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/todos`, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
       });
       if (!res.ok) {
         if (res.status === 401) {
-          // Token expired, logout user
           handleLogout();
           return;
         }
@@ -39,7 +39,6 @@ function App() {
       setTodos(data);
     } catch (err) {
       console.error('Fetch todos error:', err);
-      // Show user-friendly error
       if (err.message.includes('fetch')) {
         alert('Unable to connect to server. Please check if the backend is running.');
       }
@@ -52,33 +51,29 @@ function App() {
     e.preventDefault();
     setLoading(true);
     const endpoint = isLogin ? '/auth/signin' : '/auth/signup';
-    
+
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || 'Authentication failed');
       }
-      
+
       setToken(data.token);
       setUser(data.user);
       setIsAuthenticated(true);
       setEmail('');
       setPassword('');
-      
-      // Fetch todos after successful authentication
       await fetchTodos(data.token);
-      
+
     } catch (err) {
       console.error('Auth error:', err);
-      
-      // Show specific error messages
       if (err.message.includes('Invalid credentials')) {
         alert('Invalid email or password');
       } else if (err.message.includes('Email already in use')) {
@@ -95,7 +90,6 @@ function App() {
 
   const addTodo = async () => {
     if (!inputValue.trim()) return;
-    
     try {
       const res = await fetch(`${API_BASE}/todos`, {
         method: 'POST',
@@ -105,7 +99,7 @@ function App() {
         },
         body: JSON.stringify({ text: inputValue.trim() }),
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           handleLogout();
@@ -114,11 +108,11 @@ function App() {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Error adding todo');
       }
-      
+
       const newTodo = await res.json();
       setTodos((prev) => [newTodo, ...prev]);
       setInputValue('');
-      
+
     } catch (err) {
       console.error('Add todo error:', err);
       alert(err.message || 'Failed to add todo');
@@ -135,7 +129,7 @@ function App() {
         },
         body: JSON.stringify({ completed: !completed }),
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           handleLogout();
@@ -143,7 +137,7 @@ function App() {
         }
         throw new Error('Error updating todo');
       }
-      
+
       const updatedTodo = await res.json();
       setTodos((prev) =>
         prev.map((todo) =>
@@ -156,7 +150,6 @@ function App() {
     }
   };
 
-  // New edit functions
   const startEdit = (id, currentText) => {
     setEditingId(id);
     setEditValue(currentText);
@@ -169,7 +162,6 @@ function App() {
 
   const saveEdit = async (id) => {
     if (!editValue.trim()) return;
-    
     try {
       const res = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'PATCH',
@@ -179,7 +171,7 @@ function App() {
         },
         body: JSON.stringify({ text: editValue.trim() }),
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           handleLogout();
@@ -188,17 +180,15 @@ function App() {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Error updating todo');
       }
-      
-      const updatedTodo = await res.json();
+
+      await res.json();
       setTodos((prev) =>
         prev.map((todo) =>
           todo.id === id ? { ...todo, text: editValue.trim() } : todo
         )
       );
-      
       setEditingId(null);
       setEditValue('');
-      
     } catch (err) {
       console.error('Edit todo error:', err);
       alert(err.message || 'Failed to update todo');
@@ -209,12 +199,12 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'DELETE',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           handleLogout();
@@ -222,7 +212,7 @@ function App() {
         }
         throw new Error('Error deleting todo');
       }
-      
+
       setTodos((prev) => prev.filter((todo) => todo.id !== id));
     } catch (err) {
       console.error('Delete todo error:', err);
@@ -237,7 +227,6 @@ function App() {
     setTodos([]);
     setEmail('');
     setPassword('');
-    // Reset edit states
     setEditingId(null);
     setEditValue('');
   };
@@ -248,17 +237,15 @@ function App() {
         <div className="login-card">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-white mb-2">🚀 TodoSpace</h1>
-            <p className="text-gray-300">
-              Navigate your missions through the stellar void
-            </p>
+            <p className="text-gray-300">Navigate your missions through the stellar void</p>
           </div>
-          
+
           {loading && (
             <div className="text-center mb-4">
               <p className="text-gray-300">Loading...</p>
             </div>
           )}
-          
+
           <form onSubmit={handleAuth} className="space-y-6 login-form">
             <input
               type="email"
@@ -283,23 +270,17 @@ function App() {
               disabled={loading}
               className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading 
-                ? '⏳ Loading...' 
-                : isLogin 
-                  ? '🚀 Launch' 
-                  : '⭐ Join the Quest'
-              }
+              {loading ? '⏳ Loading...' : isLogin ? '🚀 Launch' : '⭐ Join the Quest'}
             </button>
           </form>
+
           <div className="text-center mt-6">
             <button
               onClick={() => setIsLogin(!isLogin)}
               className="text-gray-400 hover:text-white"
               disabled={loading}
             >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </button>
           </div>
         </div>
@@ -317,8 +298,7 @@ function App() {
           </p>
           <div className="flex items-center justify-center gap-4">
             <span className="text-sm text-gray-400">
-              {todos.filter((t) => t.completed).length} of {todos.length} missions
-              completed
+              {todos.filter((t) => t.completed).length} of {todos.length} missions completed
             </span>
             <button
               onClick={handleLogout}
@@ -328,7 +308,7 @@ function App() {
             </button>
           </div>
         </div>
-        
+
         <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 mb-8 border border-white/20">
           <div className="flex gap-4">
             <input
@@ -349,37 +329,32 @@ function App() {
             </button>
           </div>
         </div>
-        
+
         {loading ? (
           <p className="text-gray-400">Loading your missions...</p>
         ) : todos.length === 0 ? (
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-12 text-center border border-white/20">
             <div className="text-6xl mb-4">⭐</div>
             <p className="text-gray-300 text-xl mb-2">No cosmic missions yet</p>
-            <p className="text-gray-400">
-              Add your first task to begin your stellar journey
-            </p>
+            <p className="text-gray-400">Add your first task to begin your stellar journey</p>
           </div>
         ) : (
           <div className="space-y-4">
             {todos.map((todo) => (
               <div
                 key={todo.id}
-                className={`bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 transition-all hover:bg-white/15 todo-item ${
-                  todo.completed ? 'opacity-75' : ''
-                }`}
+                className={`bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 transition-all hover:bg-white/15 todo-item ${todo.completed ? 'opacity-75' : ''}`}
               >
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => toggleTodo(todo.id, todo.completed)}
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                      todo.completed
+                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${todo.completed
                         ? 'bg-green-500 border-green-500 text-white'
                         : 'border-white/30 hover:border-green-400'
-                    }`}
+                      }`}
                     disabled={editingId === todo.id}
                   >
-                    {todo.completed && '✓'}
+                    {todo.completed && <Check className="w-4 h-4" />}
                   </button>
                   <div className="flex-1 text-left">
                     {editingId === todo.id ? (
@@ -397,26 +372,20 @@ function App() {
                         />
                         <button
                           onClick={() => saveEdit(todo.id)}
-                          className="w-8 h-8 text-green-400 hover:text-green-300 hover:bg-green-500/20 rounded-lg"
+                          className="w-8 h-8 flex items-center justify-center text-green-400 hover:text-green-300 hover:bg-green-500/20 rounded-lg"
                           disabled={!editValue.trim()}
                         >
-                          ✓
+                          <Check className="w-4 h-4" />
                         </button>
                         <button
                           onClick={cancelEdit}
-                          className="w-8 h-8 text-gray-400 hover:text-gray-300 hover:bg-gray-500/20 rounded-lg"
+                          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-gray-500/20 rounded-lg"
                         >
-                          ✕
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <p
-                        className={
-                          todo.completed
-                            ? 'line-through text-gray-400'
-                            : 'text-white'
-                        }
-                      >
+                      <p className={todo.completed ? 'line-through text-gray-400' : 'text-white'}>
                         {todo.text}
                       </p>
                     )}
@@ -425,18 +394,18 @@ function App() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => startEdit(todo.id, todo.text)}
-                        className="w-8 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg"
+                        className="w-8 h-8 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg"
                         disabled={todo.completed}
                         title="Edit mission"
                       >
-                        ✏️
+                        <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => deleteTodo(todo.id)}
-                        className="w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg"
+                        className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg"
                         title="Delete mission"
                       >
-                        ✕
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   )}
@@ -445,7 +414,7 @@ function App() {
             ))}
           </div>
         )}
-        
+
         {todos.length > 0 && (
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 mt-8 text-center border border-white/20">
             <p className="text-gray-300 mb-4">Mission Progress</p>
@@ -453,18 +422,12 @@ function App() {
               <div
                 className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full progress-bar"
                 style={{
-                  width: `${
-                    (todos.filter((t) => t.completed).length / todos.length) *
-                    100
-                  }%`,
+                  width: `${(todos.filter((t) => t.completed).length / todos.length) * 100}%`,
                 }}
               />
             </div>
             <p className="text-white font-medium">
-              {Math.round(
-                (todos.filter((t) => t.completed).length / todos.length) * 100
-              )}
-              % Complete
+              {Math.round((todos.filter((t) => t.completed).length / todos.length) * 100)}% Complete
             </p>
           </div>
         )}
