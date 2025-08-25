@@ -11,6 +11,9 @@ function App() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState(null);
+  // New states for edit functionality
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
 
   // Fixed: Change from port 4000 to 3000 to match your backend
   const API_BASE = 'http://localhost:3000';
@@ -153,6 +156,55 @@ function App() {
     }
   };
 
+  // New edit functions
+  const startEdit = (id, currentText) => {
+    setEditingId(id);
+    setEditValue(currentText);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  const saveEdit = async (id) => {
+    if (!editValue.trim()) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: editValue.trim() }),
+      });
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleLogout();
+          return;
+        }
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error updating todo');
+      }
+      
+      const updatedTodo = await res.json();
+      setTodos((prev) =>
+        prev.map((todo) =>
+          todo.id === id ? { ...todo, text: editValue.trim() } : todo
+        )
+      );
+      
+      setEditingId(null);
+      setEditValue('');
+      
+    } catch (err) {
+      console.error('Edit todo error:', err);
+      alert(err.message || 'Failed to update todo');
+    }
+  };
+
   const deleteTodo = async (id) => {
     try {
       const res = await fetch(`${API_BASE}/todos/${id}`, {
@@ -185,6 +237,9 @@ function App() {
     setTodos([]);
     setEmail('');
     setPassword('');
+    // Reset edit states
+    setEditingId(null);
+    setEditValue('');
   };
 
   if (!isAuthenticated) {
@@ -322,29 +377,69 @@ function App() {
                         ? 'bg-green-500 border-green-500 text-white'
                         : 'border-white/30 hover:border-green-400'
                     }`}
+                    disabled={editingId === todo.id}
                   >
                     {todo.completed && '✓'}
                   </button>
                   <div className="flex-1 text-left">
-                    <p
-                      className={
-                        todo.completed
-                          ? 'line-through text-gray-400'
-                          : 'text-white'
-                      }
-                    >
-                      {todo.text}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Mission ID: {todo.id}
-                    </p>
+                    {editingId === todo.id ? (
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:border-blue-400"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') saveEdit(todo.id);
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => saveEdit(todo.id)}
+                          className="w-8 h-8 text-green-400 hover:text-green-300 hover:bg-green-500/20 rounded-lg"
+                          disabled={!editValue.trim()}
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="w-8 h-8 text-gray-400 hover:text-gray-300 hover:bg-gray-500/20 rounded-lg"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <p
+                        className={
+                          todo.completed
+                            ? 'line-through text-gray-400'
+                            : 'text-white'
+                        }
+                      >
+                        {todo.text}
+                      </p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => deleteTodo(todo.id)}
-                    className="w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg"
-                  >
-                    ✕
-                  </button>
+                  {editingId !== todo.id && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEdit(todo.id, todo.text)}
+                        className="w-8 h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg"
+                        disabled={todo.completed}
+                        title="Edit mission"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => deleteTodo(todo.id)}
+                        className="w-8 h-8 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg"
+                        title="Delete mission"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

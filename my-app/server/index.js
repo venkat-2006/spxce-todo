@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000; // Changed from 4000 to 3000 to match your frontend
 const JWT_SECRET = process.env.JWT_SECRET;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/todoSpace';
 
@@ -233,6 +233,7 @@ app.post('/todos', auth, async (req, res) => {
   }
 });
 
+// FIXED: Single PATCH route that handles both text and completed updates
 app.patch('/todos/:id', auth, async (req, res) => {
   const { id } = req.params;
   const { text, completed } = req.body || {};
