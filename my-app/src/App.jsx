@@ -12,19 +12,34 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState(null);
 
-  const API_BASE = 'http://localhost:4000';
+  // Fixed: Change from port 4000 to 3000 to match your backend
+  const API_BASE = 'http://localhost:3000';
 
   const fetchTodos = async (authToken) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/todos`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: { 
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
       });
-      if (!res.ok) throw new Error('Failed to fetch todos');
+      if (!res.ok) {
+        if (res.status === 401) {
+          // Token expired, logout user
+          handleLogout();
+          return;
+        }
+        throw new Error('Failed to fetch todos');
+      }
       const data = await res.json();
       setTodos(data);
     } catch (err) {
-      console.error(err);
+      console.error('Fetch todos error:', err);
+      // Show user-friendly error
+      if (err.message.includes('fetch')) {
+        alert('Unable to connect to server. Please check if the backend is running.');
+      }
     } finally {
       setLoading(false);
     }
@@ -32,43 +47,78 @@ function App() {
 
   const handleAuth = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const endpoint = isLogin ? '/auth/signin' : '/auth/signup';
+    
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) throw new Error('Authentication failed');
+      
       const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Authentication failed');
+      }
+      
       setToken(data.token);
       setUser(data.user);
       setIsAuthenticated(true);
       setEmail('');
       setPassword('');
-      fetchTodos(data.token);
+      
+      // Fetch todos after successful authentication
+      await fetchTodos(data.token);
+      
     } catch (err) {
-      alert(err.message);
+      console.error('Auth error:', err);
+      
+      // Show specific error messages
+      if (err.message.includes('Invalid credentials')) {
+        alert('Invalid email or password');
+      } else if (err.message.includes('Email already in use')) {
+        alert('An account with this email already exists');
+      } else if (err.message.includes('fetch')) {
+        alert('Unable to connect to server. Please check if the backend is running on http://localhost:3000');
+      } else {
+        alert(err.message || 'Authentication failed');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const addTodo = async () => {
     if (!inputValue.trim()) return;
+    
     try {
       const res = await fetch(`${API_BASE}/todos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ text: inputValue.trim() }),
       });
-      if (!res.ok) throw new Error('Error adding todo');
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleLogout();
+          return;
+        }
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error adding todo');
+      }
+      
       const newTodo = await res.json();
       setTodos((prev) => [newTodo, ...prev]);
       setInputValue('');
+      
     } catch (err) {
-      console.error(err);
+      console.error('Add todo error:', err);
+      alert(err.message || 'Failed to add todo');
     }
   };
 
@@ -78,18 +128,28 @@ function App() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ completed: !completed }),
       });
-      if (!res.ok) throw new Error('Error updating todo');
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleLogout();
+          return;
+        }
+        throw new Error('Error updating todo');
+      }
+      
+      const updatedTodo = await res.json();
       setTodos((prev) =>
         prev.map((todo) =>
           todo.id === id ? { ...todo, completed: !completed } : todo
         )
       );
     } catch (err) {
-      console.error(err);
+      console.error('Toggle todo error:', err);
+      alert('Failed to update todo');
     }
   };
 
@@ -97,12 +157,24 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
       });
-      if (!res.ok) throw new Error('Error deleting todo');
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleLogout();
+          return;
+        }
+        throw new Error('Error deleting todo');
+      }
+      
       setTodos((prev) => prev.filter((todo) => todo.id !== id));
     } catch (err) {
-      console.error(err);
+      console.error('Delete todo error:', err);
+      alert('Failed to delete todo');
     }
   };
 
@@ -111,6 +183,8 @@ function App() {
     setIsAuthenticated(false);
     setUser(null);
     setTodos([]);
+    setEmail('');
+    setPassword('');
   };
 
   if (!isAuthenticated) {
@@ -123,6 +197,13 @@ function App() {
               Navigate your missions through the stellar void
             </p>
           </div>
+          
+          {loading && (
+            <div className="text-center mb-4">
+              <p className="text-gray-300">Loading...</p>
+            </div>
+          )}
+          
           <form onSubmit={handleAuth} className="space-y-6 login-form">
             <input
               type="email"
@@ -131,6 +212,7 @@ function App() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
               required
+              disabled={loading}
             />
             <input
               type="password"
@@ -139,18 +221,26 @@ function App() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
               required
+              disabled={loading}
             />
             <button
               type="submit"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700"
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLogin ? '🚀 Launch' : '⭐ Join the Quest'}
+              {loading 
+                ? '⏳ Loading...' 
+                : isLogin 
+                  ? '🚀 Launch' 
+                  : '⭐ Join the Quest'
+              }
             </button>
           </form>
           <div className="text-center mt-6">
             <button
               onClick={() => setIsLogin(!isLogin)}
               className="text-gray-400 hover:text-white"
+              disabled={loading}
             >
               {isLogin
                 ? "Don't have an account? Sign up"
@@ -179,10 +269,11 @@ function App() {
               onClick={handleLogout}
               className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30"
             >
-              Logout
+              🚀 Logout
             </button>
           </div>
         </div>
+        
         <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 mb-8 border border-white/20">
           <div className="flex gap-4">
             <input
@@ -192,16 +283,18 @@ function App() {
               placeholder="Enter your next cosmic mission..."
               className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
               onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+              disabled={loading}
             />
             <button
               onClick={addTodo}
-              disabled={!inputValue.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 disabled:opacity-50"
+              disabled={!inputValue.trim() || loading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               🚀 Launch
             </button>
           </div>
         </div>
+        
         {loading ? (
           <p className="text-gray-400">Loading your missions...</p>
         ) : todos.length === 0 ? (
@@ -257,6 +350,7 @@ function App() {
             ))}
           </div>
         )}
+        
         {todos.length > 0 && (
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 mt-8 text-center border border-white/20">
             <p className="text-gray-300 mb-4">Mission Progress</p>
