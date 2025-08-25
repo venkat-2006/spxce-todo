@@ -14,8 +14,8 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/todoSp
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      useNewUrlParser: true,      // This does nothing in v4+ but won't break anything
+      useUnifiedTopology: true,   // This does nothing in v4+ but won't break anything
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
@@ -142,7 +142,90 @@ app.post('/auth/signup', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+app.get('/debug/db', async (req, res) => {
+  try {
+    if (!isMongoConnected) {
+      return res.json({ 
+        error: 'MongoDB not connected', 
+        fallback: 'Using in-memory storage',
+        solution: 'Check your MONGODB_URI in .env file'
+      });
+    }
 
+    const dbName = mongoose.connection.name;
+    let collections = [];
+    let collectionNames = [];
+    
+    try {
+      // Try to get collections, but handle empty database
+      const db = mongoose.connection.db;
+      collections = await db.listCollections().toArray();
+      collectionNames = collections.map(c => c.name);
+    } catch (listError) {
+      console.log('No collections found or database is empty:', listError.message);
+      collections = [];
+      collectionNames = [];
+    }
+    
+    // Get document counts (these will be 0 if collections don't exist)
+    let userCount = 0;
+    let todoCount = 0;
+    let sampleUsers = [];
+    let sampleTodos = [];
+    
+    try {
+      userCount = await User.countDocuments();
+      todoCount = await Todo.countDocuments();
+      
+      if (userCount > 0) {
+        sampleUsers = await User.find({}).limit(3).select('email createdAt');
+      }
+      if (todoCount > 0) {
+        sampleTodos = await Todo.find({}).limit(3).select('text completed userId createdAt');
+      }
+    } catch (countError) {
+      console.log('Error counting documents:', countError.message);
+    }
+    
+    const response = {
+      status: 'Connected to MongoDB',
+      database: dbName,
+      host: mongoose.connection.host,
+      connectionString: MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'), // Hide credentials
+      collections: collectionNames,
+      collectionsCount: collectionNames.length,
+      counts: {
+        users: userCount,
+        todos: todoCount
+      },
+      samples: {
+        users: sampleUsers,
+        todos: sampleTodos
+      }
+    };
+    
+    // Add helpful message if database is empty
+    if (collectionNames.length === 0) {
+      response.message = 'Database is empty. Collections will be created when you sign up your first user.';
+      response.nextSteps = [
+        'POST /auth/signup to create your first user',
+        'POST /auth/signin to get a token',
+        'POST /todos to create your first todo'
+      ];
+    }
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      suggestion: 'Your database exists but is empty. Try creating a user first.',
+      mongodbConnected: isMongoConnected,
+      database: mongoose.connection.name || 'unknown'
+    });
+  }
+});
 app.post('/auth/signin', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
