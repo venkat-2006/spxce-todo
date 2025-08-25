@@ -1,21 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -25,14 +10,14 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Changed to false - no persistent session to check
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(false); // Changed to false - no persistent session to check 
 
   // Removed localStorage check since it doesn't work in Claude.ai
   // User starts as null and must login each session
 
-  const login = async (email: string, password: string) => {
+  const login = async (email, password) => {
     setIsLoading(true);
     try {
       // Simulate API call with mock data for testing
@@ -50,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       const userData = await response.json();
-      const finalUser: User = {
+      const finalUser = {
         id: userData.id,
         email: userData.email,
         name: userData.name || userData.email.split('@')[0],
@@ -68,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string, name: string) => {
+  const signup = async (email, password, name) => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/signup', {
@@ -84,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       const userData = await response.json();
-      const finalUser: User = {
+      const finalUser = {
         id: userData.id,
         email: userData.email,
         name: userData.name || name || userData.email.split('@')[0],
