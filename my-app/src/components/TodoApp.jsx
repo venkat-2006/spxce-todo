@@ -9,24 +9,17 @@ import { UserProfile } from '@/components/auth/UserProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/api';
 
-interface Todo {
-  id: string;
-  text: string;
-  completed: boolean;
-  createdAt: Date;
-}
-
 export const TodoApp = () => {
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todos, setTodos] = useState([]);
   const [inputValue, setInputValue] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
 
   const addTodo = () => {
     if (inputValue.trim()) {
-      const newTodo: Todo = {
+      const newTodo = {
         id: Date.now().toString(),
         text: inputValue.trim(),
         completed: false,
@@ -41,13 +34,13 @@ export const TodoApp = () => {
     }
   };
 
-  const toggleTodo = (id: string) => {
+  const toggleTodo = (id) => {
     setTodos(todos.map(todo => 
       todo.id === id ? { ...todo, completed: !todo.completed } : todo
     ));
   };
 
-  const deleteTodo = (id: string) => {
+  const deleteTodo = (id) => {
     const todoToDelete = todos.find(t => t.id === id);
     setTodos(todos.filter(todo => todo.id !== id));
     if (todoToDelete) {
@@ -59,12 +52,12 @@ export const TodoApp = () => {
     }
   };
 
-  const startEditing = (todo: Todo) => {
+  const startEditing = (todo) => {
     setEditingId(todo.id);
     setEditingText(todo.text);
   };
 
-  const saveEdit = async (id: string) => {
+  const saveEdit = async (id) => {
     if (editingText.trim() && editingText.trim() !== todos.find(t => t.id === id)?.text) {
       try {
         await api.updateTodo(id, editingText.trim());
@@ -158,9 +151,7 @@ export const TodoApp = () => {
           todos.map((todo) => (
             <Card
               key={todo.id}
-              className={`cosmic-card p-4 transition-all duration-300 hover:animate-glow-pulse ${
-                todo.completed ? 'opacity-75' : ''
-              }`}
+              className={`cosmic-card p-4 transition-all duration-300 hover:animate-glow-pulse ${todo.completed ? 'opacity-75' : ''}`}
             >
               <div className="flex items-center gap-4">
                 <Button
@@ -209,13 +200,7 @@ export const TodoApp = () => {
                     </div>
                   ) : (
                     <>
-                      <p
-                        className={`transition-all ${
-                          todo.completed
-                            ? 'line-through text-muted-foreground'
-                            : 'text-foreground'
-                        }`}
-                      >
+                      <p className={`transition-all ${todo.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                         {todo.text}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
